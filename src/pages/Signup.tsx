@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth, type UserRole } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 const roles: { value: UserRole; label: string; color: string }[] = [
   { value: "user", label: "Job Seeker", color: "bg-neo-blue" },
@@ -13,20 +14,40 @@ const Signup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole>("user");
-  const { login } = useAuth();
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const { signup, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, password, role);
-    const paths: Record<UserRole, string> = {
-      user: "/user",
-      admin: "/admin",
-      recruiter: "/recruiter",
-    };
-    navigate(paths[role]);
+    setLocalError(null);
+
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setLocalError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      await signup(email, password, name, role);
+      const paths: Record<UserRole, string> = {
+        user: "/user",
+        admin: "/admin",
+        recruiter: "/recruiter",
+      };
+      navigate(paths[role]);
+    } catch {
+      // Error is stored in Redux state and displayed via `error`
+    }
   };
+
+  const displayError = localError ?? error;
 
   return (
     <div className="min-h-screen bg-grid flex items-center justify-center p-4 sm:p-6 md:p-8">
@@ -44,6 +65,17 @@ const Signup = () => {
           Create your account
         </p>
 
+        {/* Error banner */}
+        {displayError && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 px-4 py-3 neo-border bg-red-50 text-red-700 text-sm font-semibold"
+          >
+            {displayError}
+          </motion.div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Role Selection */}
           <div>
@@ -56,6 +88,7 @@ const Signup = () => {
                   key={r.value}
                   type="button"
                   onClick={() => setRole(r.value)}
+                  disabled={isLoading}
                   className={`py-2 px-2 sm:px-3 md:px-4 neo-border text-xs sm:text-sm md:text-base font-bold transition-all neo-hover ${
                     role === r.value
                       ? `${r.color} neo-shadow`
@@ -79,7 +112,8 @@ const Signup = () => {
               onChange={(e) => setName(e.target.value)}
               placeholder="Jane Doe"
               required
-              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg"
+              disabled={isLoading}
+              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg disabled:opacity-60"
             />
           </div>
 
@@ -94,7 +128,8 @@ const Signup = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               required
-              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg"
+              disabled={isLoading}
+              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg disabled:opacity-60"
             />
           </div>
 
@@ -107,17 +142,42 @@ const Signup = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min. 8 characters"
+              required
+              disabled={isLoading}
+              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg disabled:opacity-60"
+            />
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block font-bold text-sm mb-2 uppercase tracking-wider">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg"
+              disabled={isLoading}
+              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg disabled:opacity-60"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-neo-purple text-neo-purple-foreground neo-border neo-shadow font-bold text-base sm:text-lg md:text-xl uppercase tracking-wider neo-hover"
+            disabled={isLoading}
+            className="w-full py-3 bg-neo-purple text-neo-purple-foreground neo-border neo-shadow font-bold text-base sm:text-lg md:text-xl uppercase tracking-wider neo-hover flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            Create Account →
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Creating account…
+              </>
+            ) : (
+              "Create Account →"
+            )}
           </button>
         </form>
 
