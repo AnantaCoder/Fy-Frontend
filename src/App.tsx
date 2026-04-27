@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { Provider as ReduxProvider } from "react-redux";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { store } from "@/store/store";
 
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -27,30 +29,53 @@ import RecCalendar from "./pages/recruiter/RecCalendar";
 import RecSchedule from "./pages/recruiter/RecSchedule";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
+/** Redirect to the appropriate dashboard based on role */
+function rolePath(role: string | undefined): string {
+  switch (role) {
+    case "admin":
+      return "/admin";
+    case "recruiter":
+      return "/recruiter";
+    default:
+      return "/user";
+  }
+}
 
 const ProtectedRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null; // splash / skeleton could go here
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <AppLayout />;
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const dashboard = rolePath(user?.role);
+
+  if (isLoading) return null; // wait for session hydration before redirecting
 
   return (
     <Routes>
       <Route
         path="/"
-        element={isAuthenticated ? <Navigate to={`/${user?.role === "user" ? "user" : user?.role}`} /> : <Landing />}
+        element={isAuthenticated ? <Navigate to={dashboard} /> : <Landing />}
       />
       <Route
         path="/login"
-        element={isAuthenticated ? <Navigate to={`/${user?.role === "user" ? "user" : user?.role}`} /> : <Login />}
+        element={isAuthenticated ? <Navigate to={dashboard} /> : <Login />}
       />
       <Route
         path="/signup"
-        element={isAuthenticated ? <Navigate to={`/${user?.role === "user" ? "user" : user?.role}`} /> : <Signup />}
+        element={isAuthenticated ? <Navigate to={dashboard} /> : <Signup />}
       />
 
       {/* User Routes */}
@@ -61,7 +86,7 @@ const AppRoutes = () => {
         <Route path="/user/profile" element={<UserProfile />} />
       </Route>
 
-      {/* Interview - no layout (full screen) */}
+      {/* Interview – full screen, no layout */}
       <Route path="/user/interview/:id" element={<AIInterview />} />
 
       {/* Admin Routes */}
@@ -88,19 +113,21 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ReduxProvider store={store}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ReduxProvider>
 );
 
 export default App;

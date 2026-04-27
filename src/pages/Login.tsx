@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth, type UserRole } from "@/contexts/AuthContext";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 const roles: { value: UserRole; label: string; color: string }[] = [
   { value: "user", label: "Job Seeker", color: "bg-neo-blue" },
@@ -13,18 +14,22 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("user");
-  const { login } = useAuth();
+  const { login, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, password, role);
-    const paths: Record<UserRole, string> = {
-      user: "/user",
-      admin: "/admin",
-      recruiter: "/recruiter",
-    };
-    navigate(paths[role]);
+    try {
+      await login(email, password, role);
+      const paths: Record<UserRole, string> = {
+        user: "/user",
+        admin: "/admin",
+        recruiter: "/recruiter",
+      };
+      navigate(paths[role]);
+    } catch {
+      // Error is already stored in Redux state and displayed below
+    }
   };
 
   return (
@@ -43,6 +48,17 @@ const Login = () => {
           Sign in to your account
         </p>
 
+        {/* Error banner */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 px-4 py-3 neo-border bg-red-50 text-red-700 text-sm font-semibold"
+          >
+            {error}
+          </motion.div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 md:space-y-7">
           {/* Role Selection */}
           <div>
@@ -55,6 +71,7 @@ const Login = () => {
                   key={r.value}
                   type="button"
                   onClick={() => setRole(r.value)}
+                  disabled={isLoading}
                   className={`py-2 px-2 sm:px-3 md:px-4 neo-border text-xs sm:text-sm md:text-base font-bold transition-all neo-hover ${
                     role === r.value
                       ? `${r.color} neo-shadow`
@@ -78,7 +95,8 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               required
-              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg"
+              disabled={isLoading}
+              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg disabled:opacity-60"
             />
           </div>
 
@@ -93,15 +111,24 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg"
+              disabled={isLoading}
+              className="w-full px-3 sm:px-4 md:px-5 py-3 neo-border bg-background font-semibold placeholder:text-muted-foreground focus:outline-none focus:neo-shadow transition-shadow text-sm sm:text-base md:text-lg disabled:opacity-60"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-primary text-primary-foreground neo-border neo-shadow font-bold text-base sm:text-lg md:text-xl uppercase tracking-wider neo-hover"
+            disabled={isLoading}
+            className="w-full py-3 bg-primary text-primary-foreground neo-border neo-shadow font-bold text-base sm:text-lg md:text-xl uppercase tracking-wider neo-hover flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            Sign In →
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Signing in…
+              </>
+            ) : (
+              "Sign In →"
+            )}
           </button>
         </form>
 
