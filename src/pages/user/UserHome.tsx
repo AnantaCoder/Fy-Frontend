@@ -1,6 +1,9 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, Brain, Target, Shield, Briefcase, Clock } from "lucide-react";
+import { Zap, Brain, Target, Shield, Briefcase, Clock, Loader2 } from "lucide-react";
+import { campaignApi, Campaign } from "@/lib/campaign-api";
+import { toast } from "sonner";
 
 const features = [
   { icon: Brain, title: "AI-Powered Interviews", desc: "Smart questions adapted to your skills" },
@@ -9,16 +12,32 @@ const features = [
   { icon: Zap, title: "Instant Feedback", desc: "Know where you stand immediately" },
 ];
 
-const mockJobs = [
-  { id: 1, title: "Senior React Developer", company: "TechCorp", type: "Remote", salary: "$120k-$160k" },
-  { id: 2, title: "Product Designer", company: "DesignLab", type: "Hybrid", salary: "$90k-$130k" },
-  { id: 3, title: "Backend Engineer", company: "DataFlow", type: "On-site", salary: "$110k-$150k" },
-  { id: 4, title: "DevOps Lead", company: "CloudBase", type: "Remote", salary: "$130k-$170k" },
-  { id: 5, title: "ML Engineer", company: "AI Labs", type: "Remote", salary: "$140k-$180k" },
-  { id: 6, title: "Full Stack Dev", company: "StartupX", type: "Hybrid", salary: "$100k-$140k" },
-];
-
 const UserHome = () => {
+  const [jobs, setJobs] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    campaignApi.listCampaignListings()
+      .then(setJobs)
+      .catch((err) => console.error("Failed to load jobs", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleApply = async (campaignId: string) => {
+    setApplyingId(campaignId);
+    try {
+      await campaignApi.applyToCampaign(campaignId);
+      toast.success("Applied successfully! Let's start the interview.");
+      navigate("/user/track");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.detail || "Failed to apply. You might have already applied.");
+    } finally {
+      setApplyingId(null);
+    }
+  };
   return (
     <div>
       {/* HERO - Grid BG */}
@@ -100,48 +119,62 @@ const UserHome = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
             Open Positions
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockJobs.map((job) => (
-              <motion.div
-                key={job.id}
-                whileHover={{ x: -2, y: -2 }}
-                className={`bg-card neo-border neo-shadow p-6 ${
-                  job.id % 3 === 1 ? 'card-border-blue' : job.id % 3 === 2 ? 'card-border-purple' : 'card-border-yellow'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className={`font-bold text-lg ${
-                    job.id % 3 === 1 ? 'text-blue' : job.id % 3 === 2 ? 'text-purple' : 'text-orange'
-                  }`}>{job.title}</h3>
-                  <span className={`px-2 py-0.5 neo-border text-xs font-bold dark:text-black light:text-black-on-light ${
-                    job.type === 'Remote' ? 'bg-success' : 
-                    job.type === 'Hybrid' ? 'bg-neo-yellow' : 
-                    'bg-pink-500'
-                  }`}>
-                    {job.type}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Briefcase className="w-4 h-4" />
-                  <span className={`font-semibold text-sm dark:text-white light:text-black ${
-                    job.id % 3 === 1 ? 'dark:text-blue-400 light:text-blue-600' : job.id % 3 === 2 ? 'dark:text-purple-400 light:text-purple-600' : 'dark:text-orange-400 light:text-orange-600'
-                  }`}>{job.company}</span>
-                </div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span className={`font-semibold text-sm dark:text-white light:text-black ${
-                    job.id % 3 === 1 ? 'dark:text-blue-400 light:text-blue-600' : job.id % 3 === 2 ? 'dark:text-purple-400 light:text-purple-600' : 'dark:text-orange-400 light:text-orange-600'
-                  }`}>{job.salary}</span>
-                </div>
-                <Link
-                  to={`/user/interview/${job.id}`}
-                  className="block text-center py-2 bg-primary text-primary-foreground neo-border font-bold text-sm uppercase neo-hover apply-now-btn"
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-10 h-10 animate-spin text-neo-blue" />
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="neo-border-thick p-8 text-center bg-background font-bold text-muted-foreground">
+              No active job openings at the moment. Check back later!
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {jobs.map((job, index) => (
+                <motion.div
+                  key={job.id}
+                  whileHover={{ x: -2, y: -2 }}
+                  className={`bg-card neo-border neo-shadow p-6 ${
+                    index % 3 === 0 ? 'card-border-blue' : index % 3 === 1 ? 'card-border-purple' : 'card-border-yellow'
+                  }`}
                 >
-                  Apply Now
-                </Link>
-              </motion.div>
-            ))}
-          </div>
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className={`font-bold text-lg ${
+                      index % 3 === 0 ? 'text-blue' : index % 3 === 1 ? 'text-purple' : 'text-orange'
+                    }`}>{job.title}</h3>
+                    <span className={`px-2 py-0.5 neo-border text-xs font-bold dark:text-black light:text-black-on-light ${
+                      job.is_remote ? 'bg-success' : 'bg-pink-500'
+                    }`}>
+                      {job.is_remote ? 'Remote' : 'On-site'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Briefcase className="w-4 h-4" />
+                    <span className={`font-semibold text-sm dark:text-white light:text-black ${
+                      index % 3 === 0 ? 'dark:text-blue-400 light:text-blue-600' : index % 3 === 1 ? 'dark:text-purple-400 light:text-purple-600' : 'dark:text-orange-400 light:text-orange-600'
+                    }`}>Campaign Role</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className={`font-semibold text-sm dark:text-white light:text-black ${
+                      index % 3 === 0 ? 'dark:text-blue-400 light:text-blue-600' : index % 3 === 1 ? 'dark:text-purple-400 light:text-purple-600' : 'dark:text-orange-400 light:text-orange-600'
+                    }`}>
+                      {job.salary_range_min && job.salary_range_max
+                        ? `$${(job.salary_range_min / 1000).toFixed(0)}k-$${(job.salary_range_max / 1000).toFixed(0)}k`
+                        : 'Salary Undisclosed'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleApply(job.id)}
+                    disabled={applyingId === job.id}
+                    className="w-full text-center py-2 bg-primary text-primary-foreground neo-border font-bold text-sm uppercase neo-hover flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {applyingId === job.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Apply Now
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -150,13 +183,13 @@ const UserHome = () => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-8">Recent Openings</h2>
           <div className="max-w-3xl mx-auto space-y-3">
-            {mockJobs.slice(0, 4).map((job, index) => (
+            {jobs.slice(0, 4).map((job, index) => (
               <div key={job.id} className={`bg-background neo-border neo-shadow p-4 flex items-center justify-between neo-hover ${
                 index % 4 === 0 ? 'card-border-blue' : index % 4 === 1 ? 'card-border-green' : index % 4 === 2 ? 'card-border-purple' : 'card-border-yellow'
               }`}>
                 <div>
                   <span className="font-bold">{job.title}</span>
-                  <span className="text-muted-foreground font-semibold text-sm ml-2">— {job.company}</span>
+                  <span className="text-muted-foreground font-semibold text-sm ml-2">— {job.location || 'Remote'}</span>
                 </div>
                 <span className="px-3 py-1 bg-success text-success-foreground neo-border text-xs font-bold">
                   NEW

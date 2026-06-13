@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { X, Home, Users, BarChart3, FileText, User } from "lucide-react";
+import { X, Home, Users, BarChart3, FileText, User, Briefcase } from "lucide-react";
 
 interface MobileSidebarProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export const MobileSidebar = ({ isOpen, onClose }: MobileSidebarProps) => {
     { label: "Home", path: `/${user.role === "user" ? "user" : user.role}`, icon: Home },
     ...(user.role === "user"
       ? [
+          { label: "Jobs", path: "/user/jobs", icon: Briefcase },
           { label: "Resume", path: "/user/resume", icon: FileText },
           { label: "Track", path: "/user/track", icon: BarChart3 },
           { label: "Profile", path: "/user/profile", icon: User },

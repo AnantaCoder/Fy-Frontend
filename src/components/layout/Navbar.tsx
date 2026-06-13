@@ -9,6 +9,7 @@ import { MobileSidebar } from "./MobileSidebar";
 const navLinks: Record<string, { label: string; path: string }[]> = {
   user: [
     { label: "Home", path: "/user" },
+    { label: "Jobs", path: "/user/jobs" },
     { label: "Resume", path: "/user/resume" },
     { label: "Track", path: "/user/track" },
     { label: "Profile", path: "/user/profile" },
