@@ -13,6 +13,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import UserHome from "./pages/user/UserHome";
+import Jobs from "./pages/user/Jobs";
 import ResumeUpload from "./pages/user/ResumeUpload";
 import TrackOpenings from "./pages/user/TrackOpenings";
 import UserProfile from "./pages/user/UserProfile";
@@ -81,6 +82,7 @@ const AppRoutes = () => {
       {/* User Routes */}
       <Route element={<ProtectedRoutes />}>
         <Route path="/user" element={<UserHome />} />
+        <Route path="/user/jobs" element={<Jobs />} />
         <Route path="/user/resume" element={<ResumeUpload />} />
         <Route path="/user/track" element={<TrackOpenings />} />
         <Route path="/user/profile" element={<UserProfile />} />
